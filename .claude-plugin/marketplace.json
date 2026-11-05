@@ -17,6 +17,15 @@
       "skills": [
         "./skills/revisa-respuesta"
       ]
+    },
+    {
+      "name": "verifica-correo",
+      "description": "Audita un correo recibido (phishing, suplantación, BEC, malware, fraude B2B) y verifica si el remitente es una contraparte fiable.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/verifica-correo"
+      ]
     }
   ]
 }

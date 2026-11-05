@@ -7,6 +7,7 @@ Skills para Claude escritas en castellano. Funcionan en Claude Code, claude.ai y
 | Skill | Qué hace |
 |---|---|
 | [revisa-respuesta](skills/revisa-respuesta) | Audita la respuesta anterior contra sus fuentes (veracidad, claridad y exhaustividad), gradúa los fallos y entrega una versión corregida. |
+| [verifica-correo](skills/verifica-correo) | Analiza un correo recibido (phishing, suplantación, BEC, malware, fraude B2B) y verifica si el remitente es una contraparte fiable. Análisis orientativo hecho por IA. |
 
 ## Instalar una sola skill
 
@@ -23,7 +24,7 @@ npx skills add https://github.com/alcaudon89/claude-skills-es/tree/main/skills/r
 /plugin install revisa-respuesta@claude-skills-es
 ```
 
-Cada skill es un plugin independiente: se instala solo la que eliges.
+Cada skill es un plugin independiente: se instala solo la que eliges (cambia `revisa-respuesta` por `verifica-correo`, etc.).
 
 ### claude.ai y app de escritorio
 
@@ -36,7 +37,9 @@ Copia la carpeta `skills/revisa-respuesta` en `~/.claude/skills/`.
 
 ## Uso
 
-Tras cualquier respuesta, pide «revisa tu respuesta» o escribe `/revisa-respuesta`. Claude comprueba cada afirmación contra su origen, puntúa veracidad, claridad y exhaustividad, lista los problemas por gravedad (🔴 🟠 🟡) y reescribe la respuesta corregida.
+**revisa-respuesta**: tras cualquier respuesta, pide «revisa tu respuesta» o escribe `/revisa-respuesta`. Claude comprueba cada afirmación contra su origen, puntúa veracidad, claridad y exhaustividad, lista los problemas por gravedad (🔴 🟠 🟡) y reescribe la respuesta corregida.
+
+**verifica-correo**: adjunta el `.eml` (o pega el código fuente) y pregunta «¿es fiable este correo?» o escribe `/verifica-correo`. Si no conoce tu empresa, te hará unas preguntas de contexto antes de analizar. Es un análisis de IA orientativo: puede contener errores.
 
 ## Licencia
 
