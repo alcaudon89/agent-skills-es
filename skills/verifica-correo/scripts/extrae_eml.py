@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Extrae de un .eml los datos útiles para el análisis, ya desactivados (defang).
+"""Extrae de un .eml o .msg los datos útiles para el análisis, ya desactivados (defang).
 
 No abre enlaces, no guarda ni ejecuta adjuntos: solo lee el fichero y calcula hashes.
-Uso: python3 -I extrae_eml.py RUTA.eml
+Uso: python3 -I extrae_eml.py RUTA.eml|RUTA.msg
+
+Los .msg (Outlook) necesitan la librería olefile (pip install olefile). Sin ella, el
+script pide el .eml. El cuerpo HTML de un .msg suele ir en RTF comprimido y solo se
+recupera en parte: las señales que dependen del HTML son menos fiables en .msg.
 """
 import base64
 import email
@@ -102,9 +106,120 @@ def solo_texto(h):
     return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", h))).strip()
 
 
+# --- Soporte .msg (Outlook, formato OLE) -------------------------------------
+RTF_PRE = (b"{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss "
+           b"\\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier"
+           b"{\\colortbl\\red0\\green0\\blue0\r\n\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx")
+
+
+def lzfu(data):
+    """Descomprime el RTF comprimido (MS-OXRTFCP) de un .msg."""
+    import struct
+    _, usize, magic, _ = struct.unpack("<IIII", data[:16])
+    if magic == 0x414C454D:  # sin comprimir
+        return data[16:16 + usize]
+    buf = bytearray(RTF_PRE.ljust(4096, b"\0"))
+    pos, out, i = len(RTF_PRE), bytearray(), 16
+    while i < len(data) and len(out) < usize:
+        flags = data[i]
+        i += 1
+        for b in range(8):
+            if i >= len(data) or len(out) >= usize:
+                break
+            if flags & (1 << b):
+                ref = (data[i] << 8) | data[i + 1]
+                i += 2
+                off, ln = ref >> 4, (ref & 0xF) + 2
+                if off == pos % 4096:
+                    return bytes(out)
+                for k in range(ln):
+                    c = buf[(off + k) % 4096]
+                    out.append(c)
+                    buf[pos % 4096] = c
+                    pos += 1
+            else:
+                c = data[i]
+                i += 1
+                out.append(c)
+                buf[pos % 4096] = c
+                pos += 1
+    return bytes(out)
+
+
+def rtf_a_html(rtf):
+    """Recupera las etiquetas HTML encapsuladas en el RTF (\\*\\htmltag). Parcial."""
+    t = rtf.decode("latin-1")
+    html_ = "".join(re.findall(r"\{\\\*\\htmltag\d*\s?((?:[^{}\\]|\\.)*)\}", t))
+    html_ = re.sub(r"\\'([0-9a-f]{2})", lambda m: chr(int(m.group(1), 16)), html_)
+    return html_.replace("\\{", "{").replace("\\}", "}").replace("\\\\", "\\")
+
+
+def msg_a_eml(ruta):
+    """Convierte un .msg en un objeto email.message con cabeceras, cuerpo y adjuntos."""
+    try:
+        import olefile
+    except ImportError:
+        sys.exit("Este fichero es un .msg de Outlook y falta la librería olefile.\n"
+                 "Opciones: 1) pip install olefile y repetir; 2) guardar el correo como .eml "
+                 "(o copiar su código fuente) y analizar ese fichero.")
+    from email.mime.application import MIMEApplication
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    ole = olefile.OleFileIO(ruta)
+
+    def leer(nombre):
+        return ole.openstream(nombre).read() if ole.exists(nombre) else None
+
+    def texto(nombre):
+        d = leer(nombre)
+        return d.decode("utf-16-le", "replace").rstrip("\0") if d else ""
+
+    cab = texto("__substg1.0_007D001F")
+    if not cab:
+        print("⚠️ El .msg no conserva las cabeceras de transporte: sin SPF/DKIM/DMARC ni ruta Received.")
+    externo = email.message_from_string(cab + "\n\n", policy=policy.compat32) if cab else None
+    msg = MIMEMultipart("mixed")
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(texto("__substg1.0_1000001F"), "plain", "utf-8"))
+    html_ = leer("__substg1.0_10130102")
+    if html_:
+        html_ = html_.decode("utf-8", "replace")
+    elif leer("__substg1.0_10090102"):
+        html_ = rtf_a_html(lzfu(leer("__substg1.0_10090102")))
+    if html_:
+        alt.attach(MIMEText(html_, "html", "utf-8"))
+    msg.attach(alt)
+    for carpeta in sorted({e[0] for e in ole.listdir() if e[0].startswith("__attach")}):
+        datos = leer(carpeta + "/__substg1.0_37010102") or b""
+        nombre = (texto(carpeta + "/__substg1.0_3707001F") or texto(carpeta + "/__substg1.0_3704001F")
+                  or "(sin nombre)")
+        mime = texto(carpeta + "/__substg1.0_370E001F") or "application/octet-stream"
+        parte = MIMEApplication(datos, _subtype=mime.split("/")[-1])
+        parte.replace_header("Content-Type", mime)
+        parte.add_header("Content-Disposition", "attachment", filename=nombre)
+        msg.attach(parte)
+    if externo is not None:
+        for c, v in externo.items():
+            if c.lower() not in ("content-type", "content-transfer-encoding", "mime-version"):
+                msg[c] = v
+    else:
+        msg["Subject"] = texto("__substg1.0_0037001F")
+        msg["From"] = texto("__substg1.0_0C1A001F") + " <" + texto("__substg1.0_0C1F001F") + ">"
+    print("ℹ️ Entrada .msg convertida. El HTML se recupera en parte desde RTF: revisa a mano las "
+          "señales que dependen de él.\n")
+    return msg
+
+
 def main(ruta):
     with open(ruta, "rb") as f:
-        msg = email.message_from_binary_file(f, policy=policy.compat32)
+        cabecera = f.read(8)
+        f.seek(0)
+        es_msg = cabecera == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"  # firma OLE: .msg
+        if es_msg:
+            msg = msg_a_eml(ruta)
+        else:
+            msg = email.message_from_binary_file(f, policy=policy.compat32)
 
     print("# Extracción de", ruta, "(indicadores desactivados)\n")
     print("## Cabeceras clave")
@@ -192,8 +307,11 @@ def main(ruta):
 
     print("\n## Evasión y contenido sospechoso")
     hallazgos = []
-    if OCULTO_RE.search(html_total):
-        hallazgos.append("CSS que oculta texto (display:none, tamaño 0, opacidad 0…)")
+    sin_imgs = re.sub(r"(?is)<img\b[^>]*>", " ", html_total)
+    if OCULTO_RE.search(sin_imgs):
+        hallazgos.append("CSS que oculta texto o bloques (display:none, tamaño 0, opacidad 0…): revisa qué oculta")
+    if re.search(r"<img\b[^>]*style\s*=\s*[\"'][^\"']*(display\s*:\s*none|visibility\s*:\s*hidden)", html_total, re.I):
+        hallazgos.append("imagen remota oculta (display:none): píxel de seguimiento oculto, avisa al remitente de que se abrió")
     if ANCHO_CERO.search(html_total + plano):
         hallazgos.append("caracteres de ancho cero o de control de dirección")
     if re.search(r"<script\b|javascript:|\bon(load|click|error|mouseover)\s*=", html_total, re.I):
@@ -206,12 +324,13 @@ def main(ruta):
         hallazgos.append("texto que parece dirigido a una IA o a un filtro (posible inyección de instrucciones)")
     if html_total and not plano:
         hallazgos.append("solo parte HTML, sin text/plain")
-    if html_total and len(solo_texto(html_total)) < 40 and re.search(r"<img\b", html_total, re.I):
+    if not es_msg and html_total and len(solo_texto(html_total)) < 40 and re.search(r"<img\b", html_total, re.I):
         hallazgos.append("correo formado casi solo por imágenes")
-    if plano and html_total:
+    if not es_msg and plano and html_total:
         a, b = set(solo_texto(html_total).lower().split()), set(plano.lower().split())
         if a and b and len(a & b) / max(len(a | b), 1) < 0.3:
             hallazgos.append("las partes text/plain y text/html dicen cosas muy distintas")
+    hallazgos.append("(alertas automáticas: compruébalas a mano antes de usarlas en el informe)")
     for h in hallazgos or ["Sin señales automáticas (revísalo igualmente a mano)"]:
         print(f"- {h}")
 

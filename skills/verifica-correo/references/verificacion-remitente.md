@@ -4,6 +4,29 @@ Solo consultas pasivas sobre dominios y nombres **tecleados por ti**, nunca sobr
 
 Haz la Fase B que corresponda según el triaje del Paso 0.
 
+## Comprobación de red (antes de empezar)
+
+Prueba una consulta sencilla (una búsqueda web y, si puedes ejecutar código, una petición DNS sobre HTTPS a `dns.google`). Según el resultado:
+
+- **Hay búsqueda y lectura de páginas**: sigue con normalidad.
+- **Solo hay búsqueda web** (sin lectura de páginas, DNS ni RDAP): los datos saldrán de resúmenes del buscador. Márcalo en cada fila («resumen de búsqueda, página no leída») y baja la confianza.
+- **No hay red**: no rellenes nada de memoria. Marca la Fase B como [NO VERIFICABLE].
+
+Si falta red, avisa **al principio del informe**, en un bloque visible:
+
+> 🌐 **Verificación externa parcial**: en esta sesión no tengo acceso a [lo que falte: búsqueda web / lectura de páginas / DNS y RDAP]. El registro mercantil, la antigüedad del dominio y las sanciones quedan sin comprobar o se basan en resúmenes del buscador.
+>
+> Si quieres un análisis completo, puedes darme acceso a la red **bajo tu responsabilidad** (la IA podrá hacer consultas a internet; yo solo consultaré dominios y registros tecleados por mí, nunca los enlaces del correo):
+> - **claude.ai / app de escritorio**: Ajustes → Capacidades → activa la búsqueda web y, en «Ejecución de código», el acceso a la red (o añade los dominios necesarios a la lista permitida).
+> - **Claude Code en la web**: menú del entorno en la barra de título → Editar → Acceso a la red: sube el nivel o añade los dominios a «Dominios permitidos». Guía: https://code.claude.com/docs/en/cloud-environments#network-access
+> - **Claude Code en local**: revisa los permisos de WebFetch/WebSearch y la configuración del proxy o sandbox.
+>
+> Dominios útiles para esta verificación: `dns.google`, `rdap.org`, `rdap.verisign.com`, `handelsregister.de`, `boe.es`, `find-and-update.company-information.service.gov.uk`, `ec.europa.eu`, `sanctionsmap.eu`, `sanctionssearch.ofac.treas.gov`, `northdata.de`, el dominio del remitente y el de su matriz.
+>
+> También puedes hacer tú las comprobaciones pendientes (al final del informe tienes la lista con las webs).
+
+Luego continúa con lo que sí puedas hacer; no pares el análisis.
+
 ## B1. Dominio e infraestructura
 
 - Fecha de registro, registrador y DNS del dominio: RDAP (`https://rdap.org/domain/DOMINIO`, que redirige al registro correcto) o WHOIS. Para `.es`, el WHOIS de dominios.es oculta casi todo: dilo en vez de deducir.

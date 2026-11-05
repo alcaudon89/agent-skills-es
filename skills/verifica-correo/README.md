@@ -15,14 +15,17 @@ Audita un correo recibido para detectar phishing, suplantación, BEC, malware o 
 **Qué le puedes dar**
 
 - `.eml` o el código fuente completo (lo mejor). Incluye `scripts/extrae_eml.py`, que extrae cabeceras, URLs y hashes de adjuntos sin abrir nada.
-- `.msg`, un correo reenviado o una captura: funciona, pero con menos fiabilidad, y te lo dirá.
+- `.msg` de Outlook: el script lo lee si tienes `olefile` (`pip install olefile`); si no, te pedirá el `.eml`.
+- Un correo reenviado o una captura: funciona, pero con menos fiabilidad, y te lo dirá.
+
+Si la sesión no tiene acceso a internet, te avisa al principio de que la verificación externa será parcial y te explica cómo abrir la red, bajo tu responsabilidad.
 
 **Instalar solo esta skill**
 
 ```bash
-npx skills add https://github.com/alcaudon89/claude-skills-es/tree/main/skills/verifica-correo
+npx skills add https://github.com/alcaudon89/agent-skills-es/tree/main/skills/verifica-correo
 ```
 
-En claude.ai: descarga [verifica-correo.zip](https://github.com/alcaudon89/claude-skills-es/releases/latest/download/verifica-correo.zip) y súbelo en Ajustes → Capacidades → Skills.
+En claude.ai: descarga [verifica-correo.zip](https://github.com/alcaudon89/agent-skills-es/releases/latest/download/verifica-correo.zip) y súbelo en Ajustes → Capacidades → Skills.
 
 Más opciones en el [README principal](../../README.md).

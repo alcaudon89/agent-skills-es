@@ -42,7 +42,7 @@ Identifica qué te han dado y dilo al principio del informe, porque condiciona l
 | Entrada | Qué permite |
 |---|---|
 | .eml o código fuente completo | Análisis completo. |
-| .msg (Outlook) | Extrae cabeceras y cuerpo; si no puedes, pide guardarlo como .eml o copiar las cabeceras. |
+| .msg (Outlook) | El script lo lee si está instalada `olefile` (`pip install olefile`). Si no, pide guardarlo como .eml o copiar el código fuente. El HTML se recupera solo en parte. |
 | Correo reenviado | Las cabeceras son las del reenvío, no las del original: la autenticación no es fiable. Pide el original como adjunto o su código fuente. |
 | Captura de pantalla o texto copiado | Solo contenido y apariencia: sin cabeceras ni hrefs reales. Confianza baja como máximo. |
 
@@ -74,9 +74,12 @@ Ajusta la profundidad al caso:
 ## Flujo
 
 1. **Paso 0**: urgencia, contexto, calidad de la entrada y triaje (arriba).
-2. **Extracción**: si tienes el .eml como fichero y puedes ejecutar código, usa `scripts/extrae_eml.py` para sacar cabeceras clave, ruta Received, URLs, adjuntos con hash y señales de evasión, ya desactivados. No ejecuta ni abre nada. Ejecútalo con `python3 -I scripts/extrae_eml.py RUTA.eml`. Revisa su salida: es un punto de partida, no el análisis.
+2. **Extracción**: si tienes el .eml o .msg como fichero y puedes ejecutar código, usa `scripts/extrae_eml.py` para sacar cabeceras clave, ruta Received, URLs, adjuntos con hash y señales de evasión, ya desactivados. No ejecuta ni abre nada. Ejecútalo con `python3 -I scripts/extrae_eml.py RUTA`. Copia antes el correo a una carpeta vacía propia.
+   - **Cada alerta del script es una pista, no un hallazgo.** Compruébala en el código fuente antes de llevarla al informe y explica qué es en realidad. Ejemplo: un `display:none` puede ser texto oculto (evasión) o un píxel de seguimiento oculto.
+   - Los píxeles de seguimiento, ocultos o no, sí se informan: no son malware, pero dicen al remitente que abriste el correo y son contexto útil (típico de envíos masivos con plataformas de marketing).
+   - En un .msg, las señales que dependen del HTML (correo solo de imágenes, diferencias entre texto y HTML) son poco fiables, porque el HTML se reconstruye en parte.
 3. **Fase A, análisis estático del correo** (siempre): `references/analisis-correo.md`.
-4. **Fase B, verificación externa del remitente** (según el triaje): `references/verificacion-remitente.md`.
+4. **Fase B, verificación externa del remitente** (según el triaje): `references/verificacion-remitente.md`. Antes de empezar, comprueba si tienes red (ver «Comprobación de red» en esa referencia) y, si no, avisa al usuario como allí se indica.
 5. **Fase C, contraste de hipótesis** y **formato del informe**: `references/informe.md`.
 6. **Fase D, autorrevisión** antes de entregar (al final de `references/informe.md`). Obligatoria.
 
