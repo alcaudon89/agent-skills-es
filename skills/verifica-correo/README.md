@@ -26,6 +26,6 @@ Si la sesión no tiene acceso a internet, te avisa al principio de que la verifi
 npx skills add https://github.com/alcaudon89/agent-skills-es/tree/main/skills/verifica-correo
 ```
 
-En claude.ai: descarga [verifica-correo.zip](https://github.com/alcaudon89/agent-skills-es/releases/latest/download/verifica-correo.zip) y súbelo en Ajustes → Capacidades → Skills.
+En claude.ai o la app de escritorio: descarga [verifica-correo.zip](https://github.com/alcaudon89/agent-skills-es/releases/latest/download/verifica-correo.zip) y súbelo en Personalizar → Skills → + → Crear skill → Subir una skill.
 
 Más opciones en el [README principal](../../README.md).

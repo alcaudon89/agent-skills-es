@@ -16,6 +16,6 @@ Audita la última respuesta de Claude (resumen, análisis, explicación, código
 npx skills add https://github.com/alcaudon89/agent-skills-es/tree/main/skills/revisa-respuesta
 ```
 
-En claude.ai: descarga [revisa-respuesta.zip](https://github.com/alcaudon89/agent-skills-es/releases/latest/download/revisa-respuesta.zip) y súbelo en Ajustes → Capacidades → Skills.
+En claude.ai o la app de escritorio: descarga [revisa-respuesta.zip](https://github.com/alcaudon89/agent-skills-es/releases/latest/download/revisa-respuesta.zip) y súbelo en Personalizar → Skills → + → Crear skill → Subir una skill.
 
 Más opciones en el [README principal](../../README.md).
