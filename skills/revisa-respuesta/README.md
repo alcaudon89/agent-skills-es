@@ -13,9 +13,9 @@ Audita la última respuesta de Claude (resumen, análisis, explicación, código
 **Instalar solo esta skill**
 
 ```bash
-npx skills add https://github.com/alcaudon89/claude-skills-es/tree/main/skills/revisa-respuesta
+npx skills add https://github.com/alcaudon89/agent-skills-es/tree/main/skills/revisa-respuesta
 ```
 
-En claude.ai: descarga [revisa-respuesta.zip](https://github.com/alcaudon89/claude-skills-es/releases/latest/download/revisa-respuesta.zip) y súbelo en Ajustes → Capacidades → Skills.
+En claude.ai: descarga [revisa-respuesta.zip](https://github.com/alcaudon89/agent-skills-es/releases/latest/download/revisa-respuesta.zip) y súbelo en Ajustes → Capacidades → Skills.
 
 Más opciones en el [README principal](../../README.md).
