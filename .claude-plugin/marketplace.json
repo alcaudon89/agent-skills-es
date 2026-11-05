@@ -5,7 +5,7 @@
     "url": "https://github.com/alcaudon89"
   },
   "metadata": {
-    "description": "Skills para Claude en castellano",
+    "description": "Skills en castellano para Claude y otros agentes (estándar Agent Skills)",
     "version": "1.0.0"
   },
   "plugins": [

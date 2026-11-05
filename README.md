@@ -1,6 +1,6 @@
 # agent-skills-es
 
-Skills para Claude escritas en castellano. Funcionan en Claude Code, claude.ai y la app de escritorio.
+Skills en castellano para agentes de IA. Siguen el estándar abierto [Agent Skills](https://agentskills.io), así que funcionan en Claude (web, escritorio y Claude Code) y en otros agentes compatibles como Codex, Cursor, Gemini CLI o GitHub Copilot.
 
 ## Skills
 
@@ -9,13 +9,24 @@ Skills para Claude escritas en castellano. Funcionan en Claude Code, claude.ai y
 | [revisa-respuesta](skills/revisa-respuesta) | Audita la respuesta anterior contra sus fuentes (veracidad, claridad y exhaustividad), gradúa los fallos y entrega una versión corregida. |
 | [verifica-correo](skills/verifica-correo) | Analiza un correo recibido (phishing, suplantación, BEC, malware, fraude B2B) y verifica si el remitente es una contraparte fiable. Análisis orientativo hecho por IA. |
 
-## Instalar una sola skill
+## Instalación
 
-### Con la URL de su carpeta (Claude Code, Cursor y otros agentes)
+Cada skill se instala por separado: elige solo las que quieras.
 
-```bash
-npx skills add https://github.com/alcaudon89/agent-skills-es/tree/main/skills/revisa-respuesta
-```
+### Claude (claude.ai, app de escritorio)
+
+Para usar las skills en el chat de Claude, sin Claude Code:
+
+1. Descarga el ZIP de la skill desde la [última release](https://github.com/alcaudon89/agent-skills-es/releases/latest):
+   - [revisa-respuesta.zip](https://github.com/alcaudon89/agent-skills-es/releases/latest/download/revisa-respuesta.zip)
+   - [verifica-correo.zip](https://github.com/alcaudon89/agent-skills-es/releases/latest/download/verifica-correo.zip)
+2. Comprueba que tienes activada la ejecución de código: **Ajustes → Capacidades → Ejecución de código y creación de archivos** (en la versión nueva de Ajustes se llama **Crear y editar archivos**).
+3. Ve a **Personalizar → Skills**, pulsa **+**, luego **Crear skill → Subir una skill**, y elige el ZIP **sin descomprimirlo**.
+4. La skill aparece en tu lista; comprueba que está activada.
+
+Disponible en los planes Free, Pro, Max, Ultra, Team y Enterprise. En Team y Enterprise, un administrador debe tener activadas las skills en **Ajustes de la organización → Plugins y skills**. Las skills que subes son privadas: nadie más las ve salvo que las compartas.
+
+Para usarla no hace falta nada especial: pide lo que hace la skill (por ejemplo, «revisa tu respuesta») y Claude la carga sola.
 
 ### Claude Code (marketplace de plugins)
 
@@ -24,16 +35,19 @@ npx skills add https://github.com/alcaudon89/agent-skills-es/tree/main/skills/re
 /plugin install revisa-respuesta@agent-skills-es
 ```
 
-Cada skill es un plugin independiente: se instala solo la que eliges (cambia `revisa-respuesta` por `verifica-correo`, etc.).
+Cambia `revisa-respuesta` por `verifica-correo` para instalar la otra.
 
-### claude.ai y app de escritorio
+### Otros agentes (Codex, Cursor, Gemini CLI, Copilot…) o Claude Code
 
-1. Descarga el ZIP: [revisa-respuesta.zip](https://github.com/alcaudon89/agent-skills-es/releases/latest/download/revisa-respuesta.zip)
-2. En Claude, ve a **Ajustes → Capacidades → Skills** y súbelo.
+Pega la URL de la carpeta de la skill:
+
+```bash
+npx skills add https://github.com/alcaudon89/agent-skills-es/tree/main/skills/revisa-respuesta
+```
 
 ### A mano
 
-Copia la carpeta `skills/revisa-respuesta` en `~/.claude/skills/`.
+Copia la carpeta de la skill (por ejemplo, `skills/revisa-respuesta`) en la carpeta de skills de tu agente; en Claude Code es `~/.claude/skills/`.
 
 ## Uso
 
