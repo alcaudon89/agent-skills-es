@@ -1,0 +1,22 @@
+{
+  "name": "claude-skills-es",
+  "owner": {
+    "name": "David",
+    "url": "https://github.com/alcaudon89"
+  },
+  "metadata": {
+    "description": "Skills para Claude en castellano",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "revisa-respuesta",
+      "description": "Audita la respuesta anterior contra sus fuentes (veracidad, claridad, exhaustividad) y entrega una versión corregida.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/revisa-respuesta"
+      ]
+    }
+  ]
+}
