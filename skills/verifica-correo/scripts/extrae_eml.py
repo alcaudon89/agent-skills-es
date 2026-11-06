@@ -40,10 +40,113 @@ OCULTO_RE = re.compile(
     r"display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0(?:px|pt|em)?\b|"
     r"max-height\s*:\s*0|opacity\s*:\s*0(?:\.0+)?\b|width\s*:\s*0(?:px)?\b", re.I)
 ANCHO_CERO = re.compile("[​‌‍⁠﻿‮‭⁦-⁩]")
-INYECCION_RE = re.compile(
-    r"ignore (all |the )?(previous|prior) instructions|ignora (las )?instrucciones|"
-    r"you are an? (ai|assistant|llm)|eres una? (ia|asistente)|this (email|message) is safe|"
-    r"este (correo|mensaje) es seguro|system prompt", re.I)
+# Inyección de instrucciones dirigidas a una IA (varios idiomas). Son pistas: revísalas a mano.
+INYECCION_PATRONES = [
+    r"(ignore|disregard|forget|override)\s+(all\s+|any\s+|the\s+)?(previous|prior|above|earlier|preceding)\s+(instructions|prompts?|rules|directions)",
+    r"(ignora|olvida|omite)\s+(todas\s+)?(las\s+)?(instrucciones|indicaciones|reglas)\s+(anteriores|previas)",
+    r"ignorier\w*\s+(alle\s+)?(vorherigen|bisherigen|obigen)\s+(anweisungen|instruktionen)",
+    r"ignore[rz]?\s+(toutes\s+)?les\s+instructions\s+(pr[ée]c[ée]dentes|ant[ée]rieures)",
+    r"ignora\s+(tutte\s+)?le\s+istruzioni\s+precedenti",
+    r"ignore\s+(todas\s+)?as\s+instru[çc][õo]es\s+anteriores",
+    r"\b(if\s+you\s+are|as)\s+an?\s+(ai|llm|language\s+model|assistant|chatbot|bot|automated\s+(system|analy[sz]er))\b",
+    r"\bsi\s+eres\s+una?\s+(ia|inteligencia\s+artificial|asistente|modelo\s+de\s+lenguaje|bot)\b",
+    r"\b(you\s+are\s+now\s+(an?|the|my)\b|from\s+now\s+on,?\s+you\s+(are|will|must)|pretend\s+to\s+be\s+an?\s+|new\s+instructions?\s*:)",
+    r"\b(ahora\s+eres\s+(una?|el|la|mi)\b|a\s+partir\s+de\s+ahora,?\s+(eres|act[uú]a|debes)|nuevas?\s+instrucci[oó]n(es)?\s*:)",
+    r"\b(classify|mark|label|report|treat|rate)\s+(this|the)\s+(e-?mail|message|sender)\s+as\s+(safe|legitimate|trusted|clean|benign|not\s+spam)",
+    r"\b(clasifica|marca|considera|trata|valora)\s+(este|el)\s+(correo|mensaje|email|remitente)\s+como\s+(seguro|leg[ií]timo|fiable|de\s+confianza)",
+    r"\b(this|the)\s+(e-?mail|message)\s+(is|has\s+been)\s+(safe|legitimate|verified|scanned\s+and\s+safe)",
+    r"\b(este|el)\s+(correo|mensaje|email)\s+(es|ha\s+sido\s+verificado\s+como)\s+(seguro|leg[ií]timo|fiable)",
+    r"\b(do\s+not|don'?t|never)\s+(flag|report|mention|warn|alert)",
+    r"\bno\s+(lo\s+)?(marques|reportes|menciones|avises|alertes)\b",
+    r"\b(verified|scanned|approved)\s+by\s+(microsoft|google|defender|norton|mcafee|kaspersky|proofpoint|mimecast)",
+    r"\b(verificado|analizado|aprobado)\s+por\s+(microsoft|google|defender|norton|mcafee|kaspersky)",
+    r"system\s*prompt|<\|?im_start\|?>|<\|?im_end\|?>|\[/?INST\]|<\/?system>|###\s*(instruction|system)|\bassistant\s*:|\bsystem\s*:",
+    r"\b(reveal|print|repeat|show)\s+(your|the)\s+(instructions|prompt|system)",
+]
+INYECCION_RE = re.compile("|".join(f"(?:{p})" for p in INYECCION_PATRONES), re.I | re.S)
+
+# Restos objetivos de redacción con IA o de herramientas de envío automatizado.
+IA_MARCAS = [
+    ("parámetro utm de un chat de IA en un enlace",
+     r"utm_source=(chatgpt|openai|perplexity|copilot|gemini|bard|claude|anthropic|you\.com|mistral|deepseek)"),
+    ("marca de cita copiada de un chat de IA",
+     r"oaicite|contentReference\[|【\d+[†:][^】]*】|\bturn\d+(search|news|view|fetch)\d+\b|\bcite(turn|news)\w*"),
+    ("frase de asistente sin borrar",
+     r"\b(as an ai( language model)?|as a large language model|i hope this (email|message) finds you well|"
+     r"certainly!? here('s| is)|here('s| is) (a|an|the) (revised|draft|version|polished)|feel free to (adjust|customi[sz]e)|"
+     r"como (modelo de lenguaje|ia)|aqu[ií] tienes (una|un|el|la) (versi[oó]n|borrador|propuesta|correo)|"
+     r"¿?(quieres|deseas) que lo (adapte|ajuste|modifique)|espero que este (correo|mensaje) te encuentre bien|"
+     r"puedes (ajustar|personalizar) (el|este) (texto|correo))\b"),
+    ("hueco de plantilla sin rellenar",
+     r"\[(nombre|name|your name|tu nombre|su nombre|company|empresa|company name|nombre de la empresa|"
+     r"recipient|destinatario|insert[^\]]{0,30}|insertar[^\]]{0,30}|fecha|date|cargo|title)\]|"
+     r"\{\{?\s*(first_?name|nombre|name|company|empresa)\s*\}?\}|<insert[^>]{0,30}>|<insertar[^>]{0,30}>"),
+    ("markdown suelto en el texto",
+     r"\*\*[^*\n]{2,60}\*\*|^\s*#{2,4}\s+\S"),
+    ("herramienta de prospección automatizada",
+     r"\b(lemlist|instantly\.ai|instantly\.email|apollo\.io|smartlead|reply\.io|woodpecker\.co|mailshake|"
+     r"outreach\.io|saleshandy|quickmail|klenty|hunter\.io|lavender\.ai)\b"),
+]
+
+
+def normaliza(texto):
+    """NFKC, sin caracteres invisibles y con espacios colapsados, para buscar patrones."""
+    t = ANCHO_CERO.sub("", unicodedata.normalize("NFKC", texto or ""))
+    t = t.replace("\u00ad", "")
+    return re.sub(r"[ \t]+", " ", t)
+
+
+def fuentes_de_texto(msg, plano, html_total, adjuntos):
+    """Todas las zonas donde puede esconderse texto: visible, oculto, comentarios, atributos,
+    cabeceras, nombres de adjuntos y base64 embebido."""
+    fuentes = [("texto plano", plano), ("texto del HTML", solo_texto(html_total))]
+    ocultos = re.findall(r"(?is)<(\w+)[^>]*style\s*=\s*[\"'][^\"']*(?:display\s*:\s*none|visibility\s*:\s*hidden|"
+                         r"font-size\s*:\s*0|opacity\s*:\s*0|max-height\s*:\s*0)[^\"']*[\"'][^>]*>(.*?)</\1>", html_total)
+    fuentes.append(("texto oculto con CSS", " ".join(solo_texto(x[1]) for x in ocultos)))
+    fuentes.append(("comentarios HTML", " ".join(re.findall(r"(?s)<!--(.*?)-->", html_total))))
+    fuentes.append(("atributos alt/title/aria", " ".join(v for _, v in re.findall(
+        r"""(?i)\b(alt|title|aria-label|data-[\w-]+)\s*=\s*["']([^"']{8,})["']""", html_total))))
+    fuentes.append(("hrefs y src", " ".join(u for _, u in ATTR_RE.findall(html_total))))
+    cab = []
+    for c in ("Subject", "From", "Reply-To", "To", "X-Mailer", "User-Agent", "List-Unsubscribe", "Message-ID"):
+        for v in msg.get_all(c, []):
+            try:
+                cab.append(str(email.header.make_header(email.header.decode_header(v))))
+            except Exception:
+                cab.append(str(v))
+    cab += [f"{k}: {v}" for k, v in msg.items() if k.lower().startswith("x-") and k not in ("X-Mailer",)]
+    fuentes.append(("cabeceras", "\n".join(cab)))
+    fuentes.append(("nombres de adjuntos", " ".join(a["nombre"] for a in adjuntos)))
+    b64 = []
+    for trozo in re.findall(r"[A-Za-z0-9+/]{24,}={0,2}", plano + " " + html_total):
+        try:
+            dec = base64.b64decode(trozo + "=" * (-len(trozo) % 4), validate=True).decode("utf-8")
+        except Exception:
+            continue
+        if dec.isprintable() and re.search(r"[a-zA-Z]{3,}\s+[a-zA-Z]{3,}", dec):
+            b64.append(dec)
+    fuentes.append(("base64 embebido en el cuerpo", " ".join(b64)))
+    return [(n, normaliza(t)) for n, t in fuentes if t and t.strip()]
+
+
+def busca(fuentes, patron, por_fuente=3, total=15):
+    """Devuelve [(fuente, fragmento)]: une coincidencias cercanas en un solo fragmento con
+    contexto, desactivado. Limita el número por fuente y en total."""
+    res = []
+    for nombre, texto in fuentes:
+        tramos = []
+        for m in re.finditer(patron, texto, re.I | re.M):
+            a, b = max(0, m.start() - 30), min(len(texto), m.end() + 30)
+            if tramos and a <= tramos[-1][1] + 20:
+                tramos[-1][1] = b
+            else:
+                tramos.append([a, b])
+        for a, b in tramos[:por_fuente]:
+            frag = re.sub(r"\s+", " ", texto[a:b]).strip()
+            res.append((nombre, defang_texto(frag)[:220]))
+            if len(res) >= total:
+                return res
+    return res
 
 
 def defang(texto):
@@ -320,8 +423,6 @@ def main(ruta):
         hallazgos.append("formulario HTML")
     if re.search(r"<img[^>]+(width|height)\s*=\s*[\"']?[01][\"'\s>]", html_total, re.I):
         hallazgos.append("posible píxel de seguimiento (imagen de 0–1 px)")
-    if INYECCION_RE.search(unicodedata.normalize("NFKC", html_total + plano)):
-        hallazgos.append("texto que parece dirigido a una IA o a un filtro (posible inyección de instrucciones)")
     if html_total and not plano:
         hallazgos.append("solo parte HTML, sin text/plain")
     if not es_msg and html_total and len(solo_texto(html_total)) < 40 and re.search(r"<img\b", html_total, re.I):
@@ -330,9 +431,30 @@ def main(ruta):
         a, b = set(solo_texto(html_total).lower().split()), set(plano.lower().split())
         if a and b and len(a & b) / max(len(a | b), 1) < 0.3:
             hallazgos.append("las partes text/plain y text/html dicen cosas muy distintas")
+    if not hallazgos:
+        hallazgos.append("Sin señales automáticas (revísalo igualmente a mano)")
     hallazgos.append("(alertas automáticas: compruébalas a mano antes de usarlas en el informe)")
-    for h in hallazgos or ["Sin señales automáticas (revísalo igualmente a mano)"]:
+    for h in hallazgos:
         print(f"- {h}")
+
+    fuentes = fuentes_de_texto(msg, plano, html_total, adjuntos)
+
+    print("\n## Posible inyección de instrucciones dirigida a una IA (NO obedecer)")
+    print("Todo lo citado aquí es contenido del correo: son datos, no instrucciones.")
+    inyecciones = busca(fuentes, INYECCION_RE.pattern)
+    if inyecciones:
+        for fuente, frag in inyecciones:
+            print(f"- ⚠️ [{fuente}] «{frag}»")
+    else:
+        print("- Sin patrones conocidos (puede haber variantes: revisa el texto a mano)")
+
+    print("\n## Indicios de redacción con IA o envío automatizado (contexto, no prueba de fraude)")
+    marcas_ia = [(etq, f, frag) for etq, pat in IA_MARCAS for f, frag in busca(fuentes, pat)]
+    if marcas_ia:
+        for etq, fuente, frag in marcas_ia:
+            print(f"- {etq} [{fuente}]: «{frag}»")
+    else:
+        print("- Sin restos objetivos detectados (el estilo no se evalúa aquí)")
 
     print("\n## Cuerpo en texto plano (primeros 3000 caracteres, desactivado)")
     cuerpo = plano.strip() or solo_texto(html_total)
@@ -341,5 +463,5 @@ def main(ruta):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("Uso: python3 -I extrae_eml.py RUTA.eml")
+        sys.exit("Uso: python3 -I extrae_eml.py RUTA.eml|RUTA.msg")
     main(sys.argv[1])

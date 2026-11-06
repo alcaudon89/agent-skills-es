@@ -20,6 +20,10 @@ Audita un correo recibido para detectar phishing, suplantación, BEC, malware o 
 
 Si la sesión no tiene acceso a internet, te avisa al principio de que la verificación externa será parcial y te explica cómo abrir la red, bajo tu responsabilidad.
 
+**Protección contra manipulación**: si el correo intenta dar órdenes a la IA que lo analiza (texto visible u oculto, comentarios HTML, `alt` de imágenes, base64…), la skill no las obedece, lo marca como hallazgo de severidad alta y sube la puntuación de riesgo.
+
+**Indicios de IA**: detecta restos de redacción con IA o de herramientas de envío automatizado (`utm_source=chatgpt.com`, marcas de cita de chats, frases de asistente sin borrar, huecos `[Nombre]`…). Es contexto, no prueba de fraude: no da porcentajes de «escrito por IA».
+
 **Instalar solo esta skill**
 
 ```bash

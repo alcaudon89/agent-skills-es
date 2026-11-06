@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Skills en castellano para Claude y otros agentes (estándar Agent Skills)",
-    "version": "1.0.0"
+    "version": "1.2.0"
   },
   "plugins": [
     {
