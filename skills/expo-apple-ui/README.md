@@ -6,7 +6,7 @@ No copia nada de Expo. En cada uso lee los [skills oficiales de Expo](https://gi
 
 **Qué hace**
 
-1. Mira el SDK de Expo del proyecto y carga solo los skills de Expo que la tarea necesita (`expo-native-ui`, `expo-ui`, `expo-router`, `expo-animation`, `expo-design-system`).
+1. Mira el SDK de Expo del proyecto (o, si aún no hay proyecto, fija un SDK objetivo y trabaja sobre los documentos de diseño) y carga solo los skills de Expo que la tarea necesita (`expo-native-ui`, `expo-ui`, `expo-router`, `expo-animation`, `expo-design-system`).
 2. Decide qué fuente manda en cada capa: Expo para las APIs y los criterios de Apple para el diseño.
 3. Aplica las reglas de choque, por ejemplo: el cristal solo en navegación y controles, nunca en el contenido.
 4. Repasa una lista de comprobación antes de entregar.
