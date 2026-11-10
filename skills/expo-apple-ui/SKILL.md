@@ -1,6 +1,6 @@
 ---
 name: "expo-apple-ui"
-description: "UI estilo Apple en apps Expo/React Native: Liquid Glass, movimiento fluido, sheets, tabs y controles nativos. Orquesta los skills oficiales de Expo (leídos en vivo) con los criterios de diseño de Apple. Úsala al construir o revisar pantallas iOS en Expo, aplicar Liquid Glass, animar gestos o sheets, o migrar una app Expo al diseño de iOS 26."
+description: "UI estilo Apple en apps Expo/React Native: Liquid Glass, movimiento fluido, sheets, tabs y controles nativos. Orquesta los skills oficiales de Expo (leídos en vivo) con los criterios de diseño de Apple. Úsala al construir, planificar o revisar pantallas iOS en Expo (también antes de crear el proyecto), aplicar Liquid Glass, animar gestos o sheets, o migrar una app Expo al diseño de iOS 26."
 ---
 
 # Expo + Apple UI (skill puente)
@@ -9,9 +9,23 @@ Este skill no contiene APIs de Expo. Decide qué fuente manda en cada capa, obti
 
 ## Paso 0: contexto del proyecto (siempre)
 
-1. Lee `package.json`: versión de `expo` (SDK), `react-native-reanimated`, `react-native-gesture-handler`, y si existen `@expo/ui`, `expo-glass-effect` y `expo-blur`.
+Localiza la app Expo. Busca `package.json` en la raíz y, si no está o no depende de `expo`, en subcarpetas (monorepos: `apps/*`, `packages/*`, `mobile/`…), sin entrar en `node_modules`. Según lo que encuentres, sigue uno de estos dos modos:
+
+**A. Hay app Expo** (un `package.json` con `expo` en dependencias):
+
+1. Lee de ese `package.json` la versión de `expo` (SDK), `react-native-reanimated`, `react-native-gesture-handler`, y si existen `@expo/ui`, `expo-glass-effect` y `expo-blur`. Si hay varias apps Expo, pregunta cuál.
 2. Anota el SDK. Los skills de Expo siguen el **último SDK**. Si el proyecto va por detrás, contrasta cada API con la documentación versionada (`https://docs.expo.dev/versions/v<SDK>.0.0/`) antes de usarla.
 3. Instala dependencias siempre con `npx expo install <paquete>`, nunca con `npm install` a secas.
+
+**B. Aún no hay app Expo** (repo de diseño o planificación: ADR, specs, mapas de recon, tokens). No te detengas ni crees el proyecto por tu cuenta:
+
+1. Busca si la documentación del repo ya fija la plataforma o el SDK (ADR, notas de arquitectura). Si un ADR descarta Expo o React Native, dilo y para: este skill no aplica.
+2. Toma como SDK objetivo el que fije esa documentación o, si no hay, el último estable según `https://expo.dev/changelog`. Indícalo como **objetivo**, no como instalado.
+3. Aplica los Pasos 1 a 3 para producir criterio, no código: qué superficies llevan cristal, qué componentes nativos se usan (NativeTabs, form sheets, `@expo/ui`), paquetes previstos, alternativas por plataforma y requisitos de accesibilidad. Escríbelo donde el repo guarde las decisiones (un ADR nuevo, la spec de diseño o la de la pantalla), con el formato que ya use.
+4. Marca cada API citada como «verificar al crear el proyecto» y no ejecutes `npx expo install`.
+5. Si el usuario quiere empezar ya a programar, propón `npx create-expo-app@latest` y espera su confirmación; después vuelve al modo A.
+
+**Si hay `package.json` pero sin Expo** (web, backend u otra app React Native sin Expo), dilo y pregunta antes de seguir: las reglas de diseño valen, pero las APIs del Paso 1 no.
 
 ## Paso 1: cargar Expo en su versión actual
 
@@ -35,7 +49,7 @@ Carga solo los skills que la tarea necesita, y de cada uno solo las referencias 
 
 **Si una ruta da 404**, Expo ha reorganizado el repo. Ya pasó: `building-native-ui` se dividió en `expo-native-ui`, `expo-router` y `expo-animation`. Descubre los nombres actuales listando `https://api.github.com/repos/expo/skills/contents/plugins/expo/skills` o el clon y elige los equivalentes. Después **avisa al usuario de que la tabla de arriba está desfasada**, para que actualice este skill.
 
-Antes de seguir, indica en una línea qué versión de Expo has leído (commit o fecha del clon) y el SDK del proyecto.
+Antes de seguir, indica en una línea qué versión de los skills de Expo has leído (commit o fecha si la conoces; si no, la vía: «skill instalado», «clon de hoy», «raw de `main`») y el SDK del proyecto, o el SDK objetivo en el modo B.
 
 ## Paso 2: quién manda en cada capa
 
@@ -73,13 +87,15 @@ La física del movimiento fluido (proyección de momento, efecto goma, paso de v
 
 ## Paso 4: revisión antes de entregar
 
-- [ ] Versión de Expo leída y SDK del proyecto indicados; APIs verificadas contra ese SDK
+- [ ] Versión de los skills de Expo leída y SDK (del proyecto u objetivo) indicados; APIs verificadas contra ese SDK o marcadas para verificar
 - [ ] Componentes nativos donde existen (tabs, sheets, menús, pickers)
 - [ ] Cristal solo en la capa de navegación y controles, sin cristal anidado
 - [ ] Guardas y alternativas para iOS < 26, Android y, si aplica, web
 - [ ] Reducir transparencia y Reducir movimiento respetados; contraste AA en claro y oscuro
 - [ ] Gestos con spring y velocidad heredada; ningún `setState` en handlers de gesto
-- [ ] Probado en dispositivo real o, como mínimo, en el simulador de iOS 26 y en Android
+- [ ] Prueba en dispositivo real o, como mínimo, en el simulador de iOS 26 y en Android. Si no has podido ejecutarla, dilo y deja al usuario los pasos para hacerla; no la des por hecha
+
+En el modo B, la entrega es el documento de decisiones: los puntos de código (guardas, gestos, pruebas) se escriben como requisitos, no se marcan como hechos.
 
 ## Mantenimiento de este skill
 
