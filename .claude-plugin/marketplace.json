@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Skills en castellano para Claude y otros agentes (estándar Agent Skills)",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "plugins": [
     {
@@ -34,6 +34,15 @@
       "strict": false,
       "skills": [
         "./skills/expo-apple-ui"
+      ]
+    },
+    {
+      "name": "tailwind-apple-ui",
+      "description": "Estilo Apple y Liquid Glass en web con Tailwind CSS v4: anclas en @theme, criterio de Apple y un script que revisa los desvíos.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/tailwind-apple-ui"
       ]
     }
   ]
