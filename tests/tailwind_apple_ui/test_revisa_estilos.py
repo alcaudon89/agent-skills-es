@@ -62,6 +62,55 @@ class TestArb(Base):
         self.assertEqual((aviso.fichero, aviso.linea), ("a.html", 2))
 
 
+class TestV3(Base):
+    def test_v3_formas_inexistentes_en_v4(self):
+        r = proyecto(self.tmp, {
+            "app.css": "@tailwind base;",
+            "tailwind.config.js": "",
+            "a.html": 'class="bg-opacity-50 flex-shrink-0 !flex bg-[--brand] overflow-ellipsis"',
+        })
+        self.assertEqual(codigos(analizar(r)).count("V3"), 7)
+
+    def test_v3_no_marca_clases_v4_validas(self):
+        r = proyecto(self.tmp, {"a.html": 'class="shadow-sm rounded-sm outline-none ring flex! shrink-0 grow"'})
+        self.assertEqual(analizar(r), [])
+
+    def test_v3_negacion_js_no_es_importante(self):
+        jsx = 'if (a && !open) {}\nreturn <>{!isOpen && <div className="flex" />}</>'
+        r = proyecto(self.tmp, {"a.tsx": jsx})
+        self.assertEqual(analizar(r), [])
+
+    def test_v3_importante_delante_en_cadena(self):
+        r = proyecto(self.tmp, {"a.tsx": 'const c = `p-4 !mt-0`'})
+        self.assertEqual(codigos(analizar(r)), ["V3"])
+
+    def test_v3_config_cargado_con_arroba_config_no_avisa(self):
+        r = proyecto(self.tmp, {"app.css": '@import "tailwindcss";\n@config "../tailwind.config.js";',
+                                "tailwind.config.js": ""})
+        self.assertEqual(analizar(r), [])
+
+
+class TestPaleta(Base):
+    def test_paleta_con_tokens_shadcn(self):
+        css = ":root{--background:#fff}\n@theme inline{--color-background:var(--background);}"
+        r = proyecto(self.tmp, {"app.css": css, "a.tsx": 'cn("bg-gray-500 text-blue-600")'})
+        self.assertEqual(codigos(analizar(r)), ["PALETA", "PALETA"])
+
+    def test_paleta_sin_semanticos_no_avisa(self):
+        r = proyecto(self.tmp, {"a.html": 'class="bg-gray-500"'})
+        self.assertEqual(analizar(r), [])
+
+    def test_paleta_anulada_no_avisa(self):
+        css = "@theme{--color-*:initial;--color-label:#000;}"
+        r = proyecto(self.tmp, {"app.css": css, "a.html": 'class="bg-gray-500"'})
+        self.assertEqual(analizar(r), [])
+
+    def test_paleta_tokens_solo_de_paleta_no_cuentan_como_semanticos(self):
+        css = "@theme{--color-blue-500:#00f;--color-white:#fff;}"
+        r = proyecto(self.tmp, {"app.css": css, "a.html": 'class="bg-gray-500"'})
+        self.assertEqual(analizar(r), [])
+
+
 class TestMain(Base):
     def test_main_codigos_de_salida(self):
         r = proyecto(self.tmp, {"a.html": 'class="bg-[#000]"'})
