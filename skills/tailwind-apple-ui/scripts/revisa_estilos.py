@@ -22,6 +22,11 @@ DESCRIPCIONES = {
     "ARB": "Valor arbitrario donde debería haber un token",
     "V3": "Sintaxis de Tailwind v3 que no existe en v4",
     "PALETA": "Color de la paleta por defecto donde el proyecto tiene colores semánticos",
+    "CRISTAL-ANIDADO": "Cristal dentro de cristal: agrupa en un único contenedor",
+    "CRISTAL-CONTENIDO": "Cristal en contenido (tarjetas, celdas, texto, imágenes): solo va en navegación y controles",
+    "SIN-ALT-TRANSP": "Hay cristal y ninguna regla para prefers-reduced-transparency",
+    "SIN-ALT-MOV": "Hay animaciones y ninguna alternativa para reduced motion",
+    "DARK-DISPERSO": "Demasiados dark: en componentes: resuelve el oscuro en las variables",
 }
 
 PALETA_V4 = (
@@ -148,6 +153,60 @@ def detectar_paleta(rel: str, texto: str, tokens: Tokens) -> list[Aviso]:
     return [Aviso("PALETA", rel, _linea(texto, m.start()), m.group(0)) for m in PALETA_RE.finditer(texto)]
 
 
+ES_CRISTAL = re.compile(r"(?<![\w-])(backdrop-blur(-[\w\[\]().%-]+)?|backdrop-filter|glass-[\w-]+)(?![\w-])")
+# Cada alternativa empieza por un carácter distinto: sin retroceso exponencial en ficheros raros.
+_LLAVES = r"\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}"
+_VALOR = r"(?:\"[^\"]*\"|'[^']*'|" + _LLAVES + r"|[^\s>\"'{]+)"
+ETIQUETA_RE = re.compile(
+    r"<(/?)([A-Za-z][\w.:-]*)((?:[^<>{}\"'/]|/(?!>)|\"[^\"\n]*\"|'[^'\n]*'|" + _LLAVES + r")*)(/?)>"
+)
+CLASE_ATTR_RE = re.compile(r"(?:^|\s)(?::class|class|className)\s*=\s*(" + _VALOR + r")")
+VACIAS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+CONTENIDO = {"article", "li", "td", "p", "img"}
+
+
+def detectar_cristal(rel: str, texto: str) -> list[Aviso]:
+    """CRISTAL-ANIDADO y CRISTAL-CONTENIDO con una pila de etiquetas (heurística, tolera JSX)."""
+    avisos: list[Aviso] = []
+    pila: list[tuple[str, bool]] = []
+    for m in ETIQUETA_RE.finditer(texto):
+        cierre, etiqueta, attrs, autocierre = m.group(1), m.group(2).lower(), m.group(3), m.group(4)
+        if cierre:
+            nombres = [e for e, _ in pila]
+            if etiqueta in nombres:
+                del pila[len(nombres) - 1 - nombres[::-1].index(etiqueta):]
+            continue
+        c = CLASE_ATTR_RE.search(attrs)
+        clases = c.group(1) if c else ""
+        cristal = bool(ES_CRISTAL.search(clases))
+        if cristal:
+            linea = _linea(texto, m.start())
+            if any(g for _, g in pila):
+                avisos.append(Aviso("CRISTAL-ANIDADO", rel, linea, f"<{etiqueta}> con cristal dentro de otro cristal"))
+            if etiqueta in CONTENIDO or re.search(r"(?<![\w-])card(?![\w])", clases):
+                avisos.append(Aviso("CRISTAL-CONTENIDO", rel, linea, f"<{etiqueta}> {clases.strip()}"))
+        if not autocierre and etiqueta not in VACIAS:
+            pila.append((etiqueta, cristal))
+    return avisos
+
+
+MOVIMIENTO_RE = re.compile(r"(?<![\w-])(?:transition(?:-[\w-]+)?|animate-[\w-]+)(?![\w-])|@keyframes")
+ALT_MOV_RE = re.compile(r"motion-reduce:|motion-safe:|prefers-reduced-motion")
+
+
+def detectar_proyecto(textos: list[tuple[str, bool, str]], umbral_dark: int) -> list[Aviso]:
+    todo = "\n".join(t for _, _, t in textos)
+    avisos = []
+    if ES_CRISTAL.search(todo) and "prefers-reduced-transparency" not in todo:
+        avisos.append(Aviso("SIN-ALT-TRANSP", ".", 0, "añade una superficie opaca bajo prefers-reduced-transparency: reduce"))
+    if MOVIMIENTO_RE.search(todo) and not ALT_MOV_RE.search(todo):
+        avisos.append(Aviso("SIN-ALT-MOV", ".", 0, "añade motion-reduce: o @media (prefers-reduced-motion)"))
+    usos_dark = sum(t.count("dark:") for _, es_css, t in textos if not es_css)
+    if usos_dark > umbral_dark:
+        avisos.append(Aviso("DARK-DISPERSO", ".", 0, f"{usos_dark} usos de dark: (umbral {umbral_dark})"))
+    return avisos
+
+
 def analizar(raiz: Path, umbral_dark: int = 20) -> list[Aviso]:
     ficheros = [(f.relative_to(raiz).as_posix(), f.suffix == ".css", t) for f, t in recorrer(raiz)]
     textos_css = [t for _, es_css, t in ficheros if es_css]
@@ -158,6 +217,8 @@ def analizar(raiz: Path, umbral_dark: int = 20) -> list[Aviso]:
         avisos += detectar_v3(rel, texto, es_css)
         if not es_css:
             avisos += detectar_paleta(rel, texto, tokens)
+            avisos += detectar_cristal(rel, texto)
+    avisos += detectar_proyecto(ficheros, umbral_dark)
     return sorted(avisos, key=lambda a: (a.codigo, a.fichero, a.linea))
 
 

@@ -111,6 +111,66 @@ class TestPaleta(Base):
         self.assertEqual(analizar(r), [])
 
 
+ALT = "@media (prefers-reduced-transparency: reduce){.x{}}"
+
+
+class TestCristal(Base):
+    def test_cristal_anidado(self):
+        html = '<nav class="glass-bar"><div class="backdrop-blur-md">x</div></nav>'
+        r = proyecto(self.tmp, {"a.html": html, "app.css": ALT})
+        self.assertEqual(codigos(analizar(r)), ["CRISTAL-ANIDADO"])
+
+    def test_cristal_hermanos_no_es_anidado(self):
+        html = '<nav class="glass-bar">a</nav><img src="x"><div class="glass-control">b</div>'
+        r = proyecto(self.tmp, {"a.html": html, "app.css": ALT})
+        self.assertEqual(analizar(r), [])
+
+    def test_cristal_en_contenido(self):
+        html = '<li class="backdrop-blur">a</li><div class="card glass-panel">b</div>'
+        r = proyecto(self.tmp, {"a.html": html, "app.css": ALT})
+        self.assertEqual(codigos(analizar(r)).count("CRISTAL-CONTENIDO"), 2)
+
+    def test_cristal_jsx_classname(self):
+        jsx = 'return <article className={cn("glass-panel")}>x</article>'
+        r = proyecto(self.tmp, {"a.tsx": jsx, "app.css": ALT})
+        self.assertEqual(codigos(analizar(r)), ["CRISTAL-CONTENIDO"])
+
+    def test_sin_alternativa_transparencia(self):
+        r = proyecto(self.tmp, {"a.html": '<nav class="glass-bar"></nav>'})
+        self.assertIn("SIN-ALT-TRANSP", codigos(analizar(r)))
+        (r / "app.css").write_text(ALT)
+        self.assertNotIn("SIN-ALT-TRANSP", codigos(analizar(r)))
+
+
+class TestMovimientoYOscuro(Base):
+    def test_sin_alternativa_movimiento(self):
+        r = proyecto(self.tmp, {"a.html": '<div class="transition-transform"></div>'})
+        self.assertIn("SIN-ALT-MOV", codigos(analizar(r)))
+        (r / "a.html").write_text('<div class="transition-transform motion-reduce:transition-none"></div>')
+        self.assertNotIn("SIN-ALT-MOV", codigos(analizar(r)))
+
+    def test_dark_disperso_umbral(self):
+        html = "\n".join('<p class="dark:text-white">x</p>' for _ in range(3))
+        r = proyecto(self.tmp, {"a.html": html})
+        self.assertNotIn("DARK-DISPERSO", codigos(analizar(r)))
+        self.assertIn("DARK-DISPERSO", codigos(analizar(r, umbral_dark=2)))
+
+    def test_dark_en_css_no_cuenta(self):
+        css = "\n".join("@variant dark { .a{} }" for _ in range(5)) + "\n.b:where(.dark *){}"
+        r = proyecto(self.tmp, {"app.css": css.replace("@variant dark", "dark:")})
+        self.assertNotIn("DARK-DISPERSO", codigos(analizar(r, umbral_dark=1)))
+
+
+class TestRendimiento(Base):
+    def test_entrada_patologica_es_rapida(self):
+        import time
+        texto = ("<div className={a " + "{" * 30 + " x=1 ") * 200 + "\n" + '<a b="' * 5000
+        r = proyecto(self.tmp, {"x.tsx": texto})
+        t0 = time.monotonic()
+        analizar(r)
+        self.assertLess(time.monotonic() - t0, 1.0)
+
+
 class TestMain(Base):
     def test_main_codigos_de_salida(self):
         r = proyecto(self.tmp, {"a.html": 'class="bg-[#000]"'})
