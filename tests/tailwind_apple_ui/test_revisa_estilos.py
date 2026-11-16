@@ -207,6 +207,35 @@ class TestRevisionFinal(Base):
         self.assertEqual(analizar(r), [])
 
 
+class TestMenores(Base):
+    def test_paleta_en_apply_de_css(self):
+        css = "@theme inline{--color-background:var(--background);}\n.a { @apply bg-gray-500 p-4; }"
+        r = proyecto(self.tmp, {"app.css": css})
+        avisos = analizar(r)
+        self.assertEqual([(a.codigo, a.linea) for a in avisos], [("PALETA", 2)])
+
+    def test_tokens_de_paleta_en_css_no_son_avisos(self):
+        css = "@theme inline{--color-background:var(--background);--color-blue-500:#00f;}"
+        self.assertEqual(analizar(proyecto(self.tmp, {"app.css": css})), [])
+
+    def test_sin_alt_mov_no_salta_con_solo_color(self):
+        html = '<a class="transition-colors hover:text-accent">a</a><Transition name="fade"></Transition>'
+        self.assertEqual(analizar(proyecto(self.tmp, {"a.vue": html})), [])
+
+    def test_sin_alt_mov_salta_con_transform_en_hover(self):
+        r = proyecto(self.tmp, {"a.html": '<a class="transition hover:scale-105">a</a>'})
+        self.assertEqual(codigos(analizar(r)), ["SIN-ALT-MOV"])
+
+    def test_cristal_en_directivas_svelte_y_astro(self):
+        r = proyecto(self.tmp, {
+            "a.svelte": '<nav class:glass-bar={fijo}><div class:glass-control={x}>a</div></nav>',
+            "b.astro": '<nav class:list={["glass-bar"]}><li class:list={["glass-panel"]}>b</li></nav>',
+            "app.css": ALT,
+        })
+        self.assertEqual(sorted(codigos(analizar(r))),
+                         ["CRISTAL-ANIDADO", "CRISTAL-ANIDADO", "CRISTAL-CONTENIDO"])
+
+
 class TestRendimiento(Base):
     def test_entrada_patologica_es_rapida(self):
         import time

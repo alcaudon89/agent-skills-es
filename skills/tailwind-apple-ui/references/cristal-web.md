@@ -64,7 +64,7 @@ El color de acento (`text-accent`, `bg-accent`) va **solo** en elementos interac
 
 - Las entradas de sheets y popovers con `starting:` (o `@starting-style`) y `transition` usan `ease-(--ease-out-soft)` y `duration-(--duration-base)`.
 - Si la superficie se arrastra (un sheet con el dedo), se usa un spring con la velocidad heredada. El criterio está en `apple-design`; en CSS no se puede, hace falta JS.
-- `motion-reduce:` reduce el movimiento: cambia el desplazamiento por un fundido corto, no lo elimina del todo. El aviso `SIN-ALT-MOV` salta si hay animaciones y ninguna alternativa.
+- `motion-reduce:` reduce el movimiento: cambia el desplazamiento por un fundido corto, no lo elimina del todo. El aviso `SIN-ALT-MOV` salta si hay movimiento (transform, animaciones) y ninguna alternativa.
 
 ## Rendimiento
 

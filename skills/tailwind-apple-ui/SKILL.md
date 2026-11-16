@@ -88,12 +88,12 @@ Revisa cada aviso: corrígelo o explica por qué es un falso positivo. El script
 | Aviso | Qué significa |
 |---|---|
 | `ARB` | Valor arbitrario de color o medida donde debería haber un token |
-| `V3` | Sintaxis de v3 que no existe en v4 (`@tailwind`, `bg-opacity-*`, `bg-[--x]`, `!` delante, config JS sin `@config`) |
+| `V3` | Sintaxis de v3 eliminada en v4 (`@tailwind`, `bg-opacity-*`, `bg-[--x]`, config JS sin `@config`) u obsoleta (`!` delante: funciona, pero en v4 va detrás) |
 | `PALETA` | Color o sombra de la escala por defecto (`bg-gray-500`, `shadow-xl`) en un proyecto con anclas propias. Si la escala está anulada, avisa de que esa clase no genera CSS |
 | `CRISTAL-ANIDADO` | Cristal dentro de cristal |
 | `CRISTAL-CONTENIDO` | Cristal en `article`, `li`, `td`, `p`, `img` o en una tarjeta |
 | `SIN-ALT-TRANSP` | Hay cristal y ninguna regla de `prefers-reduced-transparency` |
-| `SIN-ALT-MOV` | Hay animaciones y ninguna alternativa de movimiento reducido |
+| `SIN-ALT-MOV` | Hay movimiento (transform en variantes, `transition-transform`, `animate-*`, `@keyframes`) y ninguna alternativa de movimiento reducido. Un fundido de color no cuenta |
 | `DARK-DISPERSO` | Demasiados `dark:` en componentes (umbral con `--umbral-dark N`, 20 por defecto) |
 
 Lista final:

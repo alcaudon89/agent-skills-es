@@ -59,5 +59,5 @@ Notas:
 
 - Si hay varios menús en la misma página, cada pareja necesita su propio nombre de ancla (`--menu-perfil`, `--menu-orden`). También puedes usar `anchor-scope` para limitar el nombre a un componente.
 - El menú lleva `glass-panel` y sus filas **no** llevan cristal (regla de no anidar).
-- Entrada con `starting:opacity-0 starting:scale-95 transition duration-(--duration-fast) ease-(--ease-out-soft)` y `motion-reduce:transition-none`.
+- Entrada con `starting:opacity-0 starting:scale-95 transition duration-(--duration-fast) ease-(--ease-out-soft)` y `motion-reduce:starting:scale-100`: con movimiento reducido el menú solo hace el fundido, sin escalar.
 - La alternativa sin soporte necesita que el contenedor sea `relative`. En navegadores sin anchor positioning, un `popover` sale en la capa superior y no respeta `relative`. Si eso importa, la alternativa razonable es un `<details>` o un menú sin `popover`.

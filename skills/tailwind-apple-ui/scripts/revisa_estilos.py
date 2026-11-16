@@ -24,12 +24,12 @@ TAMANO_MAX = 2 * 1024 * 1024
 
 DESCRIPCIONES = {
     "ARB": "Valor arbitrario donde debería haber un token",
-    "V3": "Sintaxis de Tailwind v3 que no existe en v4",
+    "V3": "Sintaxis de Tailwind v3 obsoleta o eliminada en v4",
     "PALETA": "Color o sombra de la escala por defecto donde el proyecto tiene anclas propias",
     "CRISTAL-ANIDADO": "Cristal dentro de cristal: agrupa en un único contenedor",
     "CRISTAL-CONTENIDO": "Cristal en contenido (tarjetas, celdas, texto, imágenes): solo va en navegación y controles",
     "SIN-ALT-TRANSP": "Hay cristal y ninguna regla para prefers-reduced-transparency",
-    "SIN-ALT-MOV": "Hay animaciones y ninguna alternativa para reduced motion",
+    "SIN-ALT-MOV": "Hay movimiento (transform, animaciones) y ninguna alternativa para reduced motion",
     "DARK-DISPERSO": "Demasiados dark: en componentes: resuelve el oscuro en las variables",
 }
 
@@ -215,7 +215,8 @@ _VALOR = r"(?:\"[^\"]*\"|'[^']*'|" + _LLAVES + r"|[^\s>\"'{]+)"
 ETIQUETA_RE = re.compile(
     r"<(/?)([A-Za-z][\w.:-]*)((?:[^<>{}\"'/]|/(?!>)|\"[^\"\n]*\"|'[^'\n]*'|" + _LLAVES + r")*)(/?)>"
 )
-CLASE_ATTR_RE = re.compile(r"(?:^|\s)(?::class|class|className)\s*=\s*(" + _VALOR + r")")
+CLASE_ATTR_RE = re.compile(r"(?:^|\s)(?::class|class:list|class|className)\s*=\s*(" + _VALOR + r")")
+DIRECTIVA_CLASE_RE = re.compile(r"(?:^|\s)class:(?!list\b)([\w-]+)")  # Svelte: class:glass-bar={x}
 VACIAS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 CONTENIDO = {"article", "li", "td", "p", "img"}
 
@@ -231,8 +232,7 @@ def detectar_cristal(rel: str, texto: str) -> list[Aviso]:
             if etiqueta in nombres:
                 del pila[len(nombres) - 1 - nombres[::-1].index(etiqueta):]
             continue
-        c = CLASE_ATTR_RE.search(attrs)
-        clases = c.group(1) if c else ""
+        clases = " ".join(CLASE_ATTR_RE.findall(attrs) + DIRECTIVA_CLASE_RE.findall(attrs))
         cristal = bool(ES_CRISTAL.search(clases))
         if cristal:
             linea = _linea(texto, m.start())
@@ -245,7 +245,11 @@ def detectar_cristal(rel: str, texto: str) -> list[Aviso]:
     return avisos
 
 
-MOVIMIENTO_RE = re.compile(r"(?<![\w-])(?:transition(?:-[\w-]+)?|animate-[\w-]+)(?![\w-])|@keyframes")
+# Solo movimiento espacial: transform, animaciones y keyframes. Un fundido de color no necesita alternativa.
+MOVIMIENTO_RE = re.compile(
+    r"(?<![\w-])(?:transition-(?:transform|all)|animate-(?!none\b)[\w-]+"
+    r"|(?:[\w-]+:)+-?(?:translate|scale|rotate|skew)-[\w./\[\]-]+)(?![\w-])|@keyframes"
+)
 ALT_MOV_RE = re.compile(r"motion-reduce:|motion-safe:|prefers-reduced-motion")
 
 
@@ -260,6 +264,19 @@ def detectar_proyecto(textos: list[tuple[str, bool, str]], umbral_dark: int) -> 
     if usos_dark > umbral_dark:
         avisos.append(Aviso("DARK-DISPERSO", ".", 0, f"{usos_dark} usos de dark: (umbral {umbral_dark})"))
     return avisos
+
+
+APPLY_RE = re.compile(r"@apply\s+[^;}]*")
+
+
+def solo_apply(css: str) -> str:
+    """El CSS con todo en blanco salvo las líneas @apply (mismos offsets)."""
+    partes, pos = [], 0
+    for m in APPLY_RE.finditer(css):
+        partes += [_blanco(css[pos:m.start()]), m.group(0)]
+        pos = m.end()
+    partes.append(_blanco(css[pos:]))
+    return "".join(partes)
 
 
 STYLE_RE = re.compile(r"(<style\b[^>]*>)(.*?)(</style>)", re.S | re.I)
@@ -298,6 +315,7 @@ def analizar(raiz: Path, umbral_dark: int = 20) -> list[Aviso]:
         avisos += detectar_arb(rel, texto)
         if estilos.strip():
             avisos += detectar_v3(rel, estilos, True)
+            avisos += detectar_paleta(rel, solo_apply(estilos), tokens)
         if not es_css:
             avisos += detectar_v3(rel, marcado, False)
             avisos += detectar_paleta(rel, marcado, tokens)
