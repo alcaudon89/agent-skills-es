@@ -21,7 +21,7 @@ cat > "$TMP/in.css" <<'EOF'
 @source "./index.html";
 EOF
 cat > "$TMP/index.html" <<'EOF'
-<nav class="glass-bar text-label">x</nav>
+<nav class="glass-bar text-label">x</nav><a class="bg-accent text-white border-black">y</a>
 <main class="bg-background text-title-1 rounded-lg shadow-md bg-gray-500 shadow-2xl"></main>
 EOF
 
@@ -35,6 +35,8 @@ no_debe() { grep -qF -- "$1" "$TMP/out.css" && { echo "FALLO sobra $1"; fallos=1
 
 debe ".bg-background"
 debe ".text-label"
+debe ".text-white"
+debe ".border-black"
 debe ".glass-bar"
 debe ".text-title-1"
 debe ".rounded-lg"

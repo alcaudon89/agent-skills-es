@@ -128,13 +128,13 @@ Indicar en una línea qué versión de Tailwind tiene el proyecto y de dónde se
 
 ### `scripts/revisa_estilos.py`
 
-Recorre `.html .jsx .tsx .vue .svelte .astro .css` (excluye `node_modules`, `dist`, `.next`, `build`). Avisos, con fichero:línea:
+Recorre `.html .js .jsx .ts .tsx .mjs .vue .svelte .astro .css`, con los `<style>` de los SFC tratados como CSS (excluye `node_modules`, `dist`, `.next`, `build`, `.svelte-kit`, `.nuxt`, `.output`, `.astro`, `out`, `coverage`, `.turbo`, `.vercel`). Avisos, con fichero:línea:
 
 | Código | Detecta |
 |---|---|
 | `ARB` | Valor arbitrario de color/medida (`-[#…]`, `-[13px]`, `-[rgb(…)]`) |
 | `V3` | Sintaxis v3: `@tailwind`, `tailwind.config.*`, `bg-[--var]`, `!` delante, renombrados (`shadow-sm` antiguo, `outline-none`, `flex-shrink-*`, `bg-opacity-*`…) |
-| `PALETA` | Colores de paleta cruda (`bg-gray-500`, `text-blue-600`) cuando el proyecto define colores semánticos propios en `@theme` o `:root` (sean los de la plantilla o ajenos). Si la paleta está anulada no hace falta: no compila |
+| `PALETA` | Colores de paleta cruda (`bg-gray-500`, `text-blue-600`) cuando el proyecto define colores semánticos propios en `@theme` o `:root` (sean los de la plantilla o ajenos). Si la paleta (o las sombras) están anuladas, avisa de toda clase de la escala por defecto que no sea un token del proyecto: Tailwind v4 la descarta en silencio y no genera CSS (corregido tras la revisión final) |
 | `CRISTAL-ANIDADO` | Elemento con `backdrop-blur`/`glass-*` dentro de otro en el mismo fichero (heurística) |
 | `CRISTAL-CONTENIDO` | `backdrop-blur`/`glass-*` en `article`, `li`, `td`, `p`, `img` o clases tipo `card` |
 | `SIN-ALT-TRANSP` | Hay cristal y no hay regla `prefers-reduced-transparency` en el CSS |

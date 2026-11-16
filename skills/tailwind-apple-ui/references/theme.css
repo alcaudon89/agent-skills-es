@@ -4,7 +4,9 @@
  * Uso:
  * - Proyecto NUEVO: importa este fichero después de `@import "tailwindcss";`. Anula la paleta
  *   y las sombras por defecto, así que solo existen las clases semánticas (bg-background,
- *   text-label, border-separator…).
+ *   text-label, border-separator…) más white y black. Ojo: Tailwind descarta EN SILENCIO las
+ *   clases que no existen (bg-gray-500 no da error, simplemente no genera CSS); el script
+ *   revisa_estilos.py las marca con PALETA.
  * - Proyecto CON ANCLAS PROPIAS: no lo importes entero. Copia solo lo que falte (normalmente
  *   el bloque «Materiales de cristal» y sus @utility) adaptando los nombres a los del proyecto.
  *
@@ -81,6 +83,8 @@
   --color-*: initial;
   --color-transparent: transparent;
   --color-current: currentColor;
+  --color-white: #ffffff;   /* texto sobre acento: bg-accent text-white */
+  --color-black: #000000;
   --color-label: var(--label);
   --color-label-secondary: var(--label-secondary);
   --color-label-tertiary: var(--label-tertiary);

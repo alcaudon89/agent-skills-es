@@ -8,20 +8,24 @@ Uso: python3 -I revisa_estilos.py RUTA [--json] [--umbral-dark N]
 """
 import argparse
 import json
+import os
 import re
 import sys
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Iterable, Iterator
 
-EXTENSIONES = {".html", ".jsx", ".tsx", ".vue", ".svelte", ".astro", ".css"}
-EXCLUIDOS = {"node_modules", "dist", ".next", "build", ".git"}
+EXTENSIONES = {".html", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".vue", ".svelte", ".astro", ".css"}
+EXCLUIDOS = {
+    "node_modules", "dist", ".next", "build", ".git", ".svelte-kit", ".nuxt", ".output", ".astro",
+    "out", "coverage", ".turbo", ".vercel",
+}
 TAMANO_MAX = 2 * 1024 * 1024
 
 DESCRIPCIONES = {
     "ARB": "Valor arbitrario donde debería haber un token",
     "V3": "Sintaxis de Tailwind v3 que no existe en v4",
-    "PALETA": "Color de la paleta por defecto donde el proyecto tiene colores semánticos",
+    "PALETA": "Color o sombra de la escala por defecto donde el proyecto tiene anclas propias",
     "CRISTAL-ANIDADO": "Cristal dentro de cristal: agrupa en un único contenedor",
     "CRISTAL-CONTENIDO": "Cristal en contenido (tarjetas, celdas, texto, imágenes): solo va en navegación y controles",
     "SIN-ALT-TRANSP": "Hay cristal y ninguna regla para prefers-reduced-transparency",
@@ -47,12 +51,17 @@ class Aviso:
     texto: str
 
 
+def _rutas(raiz: Path) -> Iterator[Path]:
+    """Todos los ficheros bajo raiz, sin entrar en los directorios excluidos (se podan, no se recorren)."""
+    for actual, dirs, ficheros in os.walk(raiz):
+        dirs[:] = sorted(d for d in dirs if d not in EXCLUIDOS)
+        for nombre in sorted(ficheros):
+            yield Path(actual) / nombre
+
+
 def recorrer(raiz: Path) -> Iterator[tuple[Path, str]]:
     """Ficheros con extensión admitida fuera de los directorios excluidos."""
-    for f in sorted(raiz.rglob("*")):
-        rel = f.relative_to(raiz)
-        if any(parte in EXCLUIDOS for parte in rel.parts):
-            continue
+    for f in _rutas(raiz):
         try:
             if f.suffix not in EXTENSIONES or not f.is_file() or f.stat().st_size > TAMANO_MAX:
                 continue
@@ -83,24 +92,45 @@ def detectar_arb(rel: str, texto: str) -> list[Aviso]:
 class Tokens:
     colores_semanticos: set[str]
     paleta_anulada: bool
+    colores: set[str] = field(default_factory=set)
+    sombras: set[str] = field(default_factory=set)
+    sombras_anuladas: bool = False
 
 
-THEME_RE = re.compile(r"@theme\b[^{]*\{(.*?)\}", re.S)
+THEME_INICIO_RE = re.compile(r"@theme\b[^{;]*\{")
+SOMBRA_TOKEN_RE = re.compile(r"--shadow-([\w-]+)\s*:")
+
+
+def bloques_theme(texto: str) -> list[str]:
+    """Contenido de cada bloque @theme, contando llaves (admite @keyframes dentro)."""
+    bloques = []
+    for m in THEME_INICIO_RE.finditer(texto):
+        nivel, i = 1, m.end()
+        while i < len(texto) and nivel:
+            nivel += {"{": 1, "}": -1}.get(texto[i], 0)
+            i += 1
+        bloques.append(texto[m.end():i - 1])
+    return bloques
+
+
 COLOR_TOKEN_RE = re.compile(r"--color-([\w-]+)\s*:")
 COLOR_DE_PALETA_RE = re.compile(r"^(?:(?:" + PALETA_V4 + r")-\d{2,3}|black|white|transparent|current|inherit)$")
 
 
 def leer_tokens(textos_css: Iterable[str]) -> Tokens:
-    semanticos: set[str] = set()
-    anulada = False
+    t = Tokens(set(), False)
     for texto in textos_css:
-        for bloque in THEME_RE.findall(texto):
+        for bloque in bloques_theme(texto):
             if re.search(r"--color-\*\s*:\s*initial", bloque):
-                anulada = True
+                t.paleta_anulada = True
+            if re.search(r"--shadow-\*\s*:\s*initial", bloque):
+                t.sombras_anuladas = True
             for nombre in COLOR_TOKEN_RE.findall(bloque):
+                t.colores.add(nombre)
                 if not COLOR_DE_PALETA_RE.match(nombre):
-                    semanticos.add(nombre)
-    return Tokens(semanticos, anulada)
+                    t.colores_semanticos.add(nombre)
+            t.sombras.update(SOMBRA_TOKEN_RE.findall(bloque))
+    return t
 
 
 V3_CLASES_RE = re.compile(
@@ -113,6 +143,8 @@ V3_CLASES_RE = re.compile(
 )
 # `!` delante (v3) solo dentro de una cadena y tras inicio o espacio: evita la negación de JS.
 V3_IMPORTANTE_RE = re.compile(r"(?<=[\s\"'`])![a-z][\w:-]*")
+# Valores de directivas (Vue v-if/:prop/@evento, Svelte on:, Alpine x-…) y manejadores on*: son JS, no clases.
+ATRIBUTO_JS_RE = re.compile(r"(?:\bv-[\w:.\[\]-]+|(?<![\w-])[:@#][\w.:\[\]-]+|\bon[\w:]+|\bx-[\w:.-]+)\s*=\s*$")
 CADENA_RE = re.compile(r"\"[^\"\n]*\"|'[^'\n]*'|`[^`]*`")
 V3_CSS_RE = re.compile(r"@tailwind\s+(?:base|components|utilities|variants)")
 CONFIG_NOMBRES = ("tailwind.config.js", "tailwind.config.cjs", "tailwind.config.mjs", "tailwind.config.ts")
@@ -125,6 +157,8 @@ def detectar_v3(rel: str, texto: str, es_css: bool) -> list[Aviso]:
     else:
         avisos += [Aviso("V3", rel, _linea(texto, m.start()), m.group(0)) for m in V3_CLASES_RE.finditer(texto)]
         for c in CADENA_RE.finditer(texto):
+            if ATRIBUTO_JS_RE.search(texto, max(0, c.start() - 80), c.start()):
+                continue
             for m in V3_IMPORTANTE_RE.finditer(texto, c.start(), c.end()):
                 avisos.append(Aviso("V3", rel, _linea(texto, m.start()), m.group(0)))
     return avisos
@@ -134,11 +168,10 @@ def detectar_config_v3(raiz: Path, textos_css: list[str]) -> list[Aviso]:
     if any("@config" in t for t in textos_css):
         return []
     avisos = []
-    for nombre in CONFIG_NOMBRES:
-        for f in raiz.rglob(nombre):
-            rel = f.relative_to(raiz)
-            if not any(parte in EXCLUIDOS for parte in rel.parts):
-                avisos.append(Aviso("V3", rel.as_posix(), 0, "config en JS sin @config: en v4 va en @theme"))
+    for f in _rutas(raiz):
+        if f.name in CONFIG_NOMBRES:
+            rel = f.relative_to(raiz).as_posix()
+            avisos.append(Aviso("V3", rel, 0, "config en JS sin @config: en v4 va en @theme"))
     return avisos
 
 
@@ -147,10 +180,32 @@ PALETA_RE = re.compile(
 )
 
 
+PALETA_BN_RE = re.compile(r"(?<![\w-])(?:[\w-]+:)*(?:" + PREFIJOS_COLOR + r")-(?:black|white)(?:/\d+)?(?![\w-])")
+SOMBRA_DEFECTO_RE = re.compile(r"(?<![\w-])(?:[\w-]+:)*shadow-(2xs|xs|sm|md|lg|xl|2xl|inner)(?![\w-])")
+NO_GENERA = "no genera CSS: la escala por defecto está anulada; usa un token"
+
+
+def _nombre_color(clase: str) -> str:
+    """bg-blue-500/50 → blue-500; hover:text-white → white."""
+    base = clase.split(":")[-1].split("/")[0]
+    m = re.search(r"-((?:" + PALETA_V4 + r")-\d{2,3}|black|white)$", base)
+    return m.group(1) if m else ""
+
+
 def detectar_paleta(rel: str, texto: str, tokens: Tokens) -> list[Aviso]:
-    if not tokens.colores_semanticos or tokens.paleta_anulada:
-        return []
-    return [Aviso("PALETA", rel, _linea(texto, m.start()), m.group(0)) for m in PALETA_RE.finditer(texto)]
+    avisos = []
+    if tokens.paleta_anulada:
+        for rx in (PALETA_RE, PALETA_BN_RE):
+            for m in rx.finditer(texto):
+                if _nombre_color(m.group(0)) not in tokens.colores:
+                    avisos.append(Aviso("PALETA", rel, _linea(texto, m.start()), f"{m.group(0)} ({NO_GENERA})"))
+    elif tokens.colores_semanticos:
+        avisos += [Aviso("PALETA", rel, _linea(texto, m.start()), m.group(0)) for m in PALETA_RE.finditer(texto)]
+    if tokens.sombras_anuladas:
+        for m in SOMBRA_DEFECTO_RE.finditer(texto):
+            if m.group(1) not in tokens.sombras:
+                avisos.append(Aviso("PALETA", rel, _linea(texto, m.start()), f"{m.group(0)} ({NO_GENERA})"))
+    return avisos
 
 
 ES_CRISTAL = re.compile(r"(?<![\w-])(backdrop-blur(-[\w\[\]().%-]+)?|backdrop-filter|glass-[\w-]+)(?![\w-])")
@@ -207,19 +262,48 @@ def detectar_proyecto(textos: list[tuple[str, bool, str]], umbral_dark: int) -> 
     return avisos
 
 
+STYLE_RE = re.compile(r"(<style\b[^>]*>)(.*?)(</style>)", re.S | re.I)
+
+
+def _blanco(t: str) -> str:
+    return re.sub(r"[^\n]", " ", t)
+
+
+def separar_estilos(texto: str) -> tuple[str, str]:
+    """(marcado, estilos): mismos offsets y líneas; cada parte deja la otra en blanco."""
+    marcado, estilos, pos = [], [], 0
+    for m in STYLE_RE.finditer(texto):
+        antes = texto[pos:m.start(2)]
+        marcado += [antes, _blanco(m.group(2))]
+        estilos += [_blanco(antes), m.group(2)]
+        pos = m.end(2)
+    marcado.append(texto[pos:])
+    estilos.append(_blanco(texto[pos:]))
+    return "".join(marcado), "".join(estilos)
+
+
 def analizar(raiz: Path, umbral_dark: int = 20) -> list[Aviso]:
-    ficheros = [(f.relative_to(raiz).as_posix(), f.suffix == ".css", t) for f, t in recorrer(raiz)]
-    textos_css = [t for _, es_css, t in ficheros if es_css]
+    ficheros = []
+    for f, texto in recorrer(raiz):
+        rel = f.relative_to(raiz).as_posix()
+        if f.suffix == ".css":
+            ficheros.append((rel, True, texto, "", texto))
+        else:
+            marcado, estilos = separar_estilos(texto)
+            ficheros.append((rel, False, texto, marcado, estilos))
+    textos_css = [estilos for *_, estilos in ficheros if estilos.strip()]
     tokens = leer_tokens(textos_css)
     avisos: list[Aviso] = detectar_config_v3(raiz, textos_css)
-    for rel, es_css, texto in ficheros:
+    for rel, es_css, texto, marcado, estilos in ficheros:
         avisos += detectar_arb(rel, texto)
-        avisos += detectar_v3(rel, texto, es_css)
+        if estilos.strip():
+            avisos += detectar_v3(rel, estilos, True)
         if not es_css:
-            avisos += detectar_paleta(rel, texto, tokens)
-            avisos += detectar_cristal(rel, texto)
-    avisos += detectar_proyecto(ficheros, umbral_dark)
-    return sorted(avisos, key=lambda a: (a.codigo, a.fichero, a.linea))
+            avisos += detectar_v3(rel, marcado, False)
+            avisos += detectar_paleta(rel, marcado, tokens)
+            avisos += detectar_cristal(rel, marcado)
+    avisos += detectar_proyecto([(rel, es_css, texto) for rel, es_css, texto, *_ in ficheros], umbral_dark)
+    return sorted(avisos, key=lambda a: (a.codigo, a.fichero, a.linea, a.texto))
 
 
 def _imprimir(avisos: list[Aviso]) -> None:

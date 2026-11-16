@@ -23,7 +23,7 @@ Según lo que encuentres:
 
 **A. v4 con anclas propias** (`@theme` o `:root` con colores semánticos, sean de Apple o no: Material, shadcn con `--background`, una marca). **Mandan sus anclas.** No renombres nada ni anules la paleta por defecto. Añade solo lo que falte (casi siempre los materiales de cristal de `theme.css`, adaptados a sus nombres) y pide permiso antes.
 
-**B. v4 sin anclas.** Propón `theme.css` adaptado: el acento de marca en `--accent` y, si la marca lo pide, la familia tipográfica. Explica que anula la paleta y las sombras por defecto, de modo que solo existan las clases semánticas. Escríbelo junto al CSS de entrada (`@import "./theme.css";` después de `@import "tailwindcss";`) cuando el usuario confirme.
+**B. v4 sin anclas.** Propón `theme.css` adaptado: el acento de marca en `--accent` y, si la marca lo pide, la familia tipográfica. Explica que anula la paleta y las sombras por defecto, de modo que solo existan las clases semánticas (más `white` y `black`). Tailwind descarta en silencio las clases que no existen: `bg-gray-500` no da error, simplemente no pinta. Por eso el script lo marca. Escríbelo junto al CSS de entrada (`@import "./theme.css";` después de `@import "tailwindcss";`) cuando el usuario confirme.
 
 **C. v3.** Dilo y ofrece `npx @tailwindcss/upgrade`. No escribas estilos v3 ni mezcles sintaxis. Tras la migración, vuelve al caso A o B.
 
@@ -77,7 +77,7 @@ Para menús, popovers y tooltips que salen de su control, usa CSS anchor positio
 
 ## Paso 5: revisión antes de entregar
 
-Ejecuta el script sobre la app (no hace falta red; solo lee):
+Ejecuta el script sobre la app (no hace falta red; solo lee). Revisa `.html .js .jsx .ts .tsx .mjs .vue .svelte .astro .css` (incluidos los bloques `<style>`) y omite `node_modules` y las carpetas de build:
 
 ```bash
 python3 -I <ruta-del-skill>/scripts/revisa_estilos.py <ruta-de-la-app>
@@ -89,7 +89,7 @@ Revisa cada aviso: corrígelo o explica por qué es un falso positivo. El script
 |---|---|
 | `ARB` | Valor arbitrario de color o medida donde debería haber un token |
 | `V3` | Sintaxis de v3 que no existe en v4 (`@tailwind`, `bg-opacity-*`, `bg-[--x]`, `!` delante, config JS sin `@config`) |
-| `PALETA` | Color de la paleta por defecto (`bg-gray-500`) en un proyecto con colores semánticos |
+| `PALETA` | Color o sombra de la escala por defecto (`bg-gray-500`, `shadow-xl`) en un proyecto con anclas propias. Si la escala está anulada, avisa de que esa clase no genera CSS |
 | `CRISTAL-ANIDADO` | Cristal dentro de cristal |
 | `CRISTAL-CONTENIDO` | Cristal en `article`, `li`, `td`, `p`, `img` o en una tarjeta |
 | `SIN-ALT-TRANSP` | Hay cristal y ninguna regla de `prefers-reduced-transparency` |

@@ -100,10 +100,12 @@ class TestPaleta(Base):
         r = proyecto(self.tmp, {"a.html": 'class="bg-gray-500"'})
         self.assertEqual(analizar(r), [])
 
-    def test_paleta_anulada_no_avisa(self):
+    def test_paleta_anulada_avisa_que_no_genera_css(self):
         css = "@theme{--color-*:initial;--color-label:#000;}"
         r = proyecto(self.tmp, {"app.css": css, "a.html": 'class="bg-gray-500"'})
-        self.assertEqual(analizar(r), [])
+        (aviso,) = analizar(r)
+        self.assertEqual(aviso.codigo, "PALETA")
+        self.assertIn("no genera CSS", aviso.texto)
 
     def test_paleta_tokens_solo_de_paleta_no_cuentan_como_semanticos(self):
         css = "@theme{--color-blue-500:#00f;--color-white:#fff;}"
@@ -159,6 +161,50 @@ class TestMovimientoYOscuro(Base):
         css = "\n".join("@variant dark { .a{} }" for _ in range(5)) + "\n.b:where(.dark *){}"
         r = proyecto(self.tmp, {"app.css": css.replace("@variant dark", "dark:")})
         self.assertNotIn("DARK-DISPERSO", codigos(analizar(r, umbral_dark=1)))
+
+
+class TestRevisionFinal(Base):
+    def test_v3_negacion_en_atributos_vue(self):
+        vue = '<template><div v-if="!isOpen" :disabled="!valid && !loading" @click="!x">a</div></template>'
+        r = proyecto(self.tmp, {"a.vue": vue})
+        self.assertEqual(analizar(r), [])
+
+    def test_style_de_sfc_se_trata_como_css(self):
+        vue = '<template><p>a</p></template>\n<style>\n.a { flex-shrink: 0; flex-grow: 1 }\n</style>'
+        r = proyecto(self.tmp, {"a.vue": vue})
+        self.assertEqual(analizar(r), [])
+
+    def test_style_de_sfc_detecta_tailwind_v3(self):
+        svelte = '<p>a</p>\n<style>\n@tailwind base;\n</style>'
+        r = proyecto(self.tmp, {"a.svelte": svelte})
+        avisos = analizar(r)
+        self.assertEqual([(a.codigo, a.linea) for a in avisos], [("V3", 3)])
+
+    def test_paleta_anulada_avisa_clases_que_no_generan_css(self):
+        css = "@theme{--color-*:initial;--color-label:#000;--shadow-*:initial;--shadow-md:0 0 1px #000;}"
+        r = proyecto(self.tmp, {"app.css": css, "a.html": 'class="text-blue-500 shadow-xl shadow-md text-label"'})
+        self.assertEqual([(a.codigo, a.texto.split()[0]) for a in analizar(r)],
+                         [("PALETA", "shadow-xl"), ("PALETA", "text-blue-500")])
+
+    def test_paleta_anulada_respeta_tokens_definidos(self):
+        css = "@theme{--color-*:initial;--color-label:#000;--color-white:#fff;}"
+        r = proyecto(self.tmp, {"app.css": css, "a.html": 'class="text-white"'})
+        self.assertEqual(analizar(r), [])
+
+    def test_theme_con_keyframes_anidados(self):
+        css = ("@theme inline {\n --animate-x: x 1s;\n @keyframes x { from { opacity: 0 } to { opacity: 1 } }\n"
+               " --color-background: var(--background);\n}")
+        r = proyecto(self.tmp, {"app.css": css, "a.tsx": 'cn("bg-gray-500")'})
+        self.assertEqual([c for c in codigos(analizar(r)) if c == "PALETA"], ["PALETA"])
+
+    def test_revisa_js_y_ts(self):
+        r = proyecto(self.tmp, {"b.js": 'const c = "bg-[#123456]"', "v.ts": 'cva("p-[13px]")'})
+        self.assertEqual(codigos(analizar(r)), ["ARB", "ARB"])
+
+    def test_excluye_directorios_de_build_habituales(self):
+        r = proyecto(self.tmp, {f"{d}/x.html": 'class="bg-[#fff]"'
+                                for d in (".svelte-kit", ".nuxt", ".output", ".astro", "out", "coverage")})
+        self.assertEqual(analizar(r), [])
 
 
 class TestRendimiento(Base):
