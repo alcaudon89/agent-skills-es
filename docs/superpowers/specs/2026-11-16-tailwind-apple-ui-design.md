@@ -1,6 +1,6 @@
 # Diseño: skill `tailwind-apple-ui`
 
-Fecha: 2026-11-16 · Estado: borrador para aprobación
+Fecha: 2026-11-16 · Estado: pendiente de aprobación final
 
 ## Intención
 
@@ -55,7 +55,11 @@ Elegido C por el usuario: el objetivo es consistencia y solo se garantiza si se 
 
 ## Decisiones tomadas
 
-- **Usuario:** proyectos web; anclas = tokens de diseño como núcleo; anchor positioning como apartado; enfoque C.
+- **Usuario:**
+  - Proyectos web; anclas = tokens de diseño como núcleo; anchor positioning como apartado; enfoque C.
+  - **Activación:** solo cuando se pide estilo Apple o el proyecto ya lo usa (lo dice la `description`). Con anclas ajenas (Material, shadcn con `--background`, marca propia) se respetan sus nombres y valores, solo se añade lo que falte (materiales de cristal) y no se renombra nada. El script adapta sus avisos a los tokens que encuentre, no a la plantilla.
+  - **Cierre de anclas:** en proyecto nuevo, la plantilla anula la paleta y las sombras por defecto de Tailwind (`--color-*: initial;`, `--shadow-*: initial;`) para que solo existan las semánticas. En proyecto existente no se anula nada y vigila el script. Espaciado: se mantiene `--spacing` de Tailwind (4 px), coherente con la retícula 4/8 pt de Apple.
+  - **Fidelidad del cristal:** esmerilado multinavegador (`backdrop-filter` blur + saturate, borde, brillo). La refracción con filtros SVG queda fuera de la v1.
 - **Mías (revisables):**
   - Nombre `tailwind-apple-ui`.
   - Paleta por defecto = colores de sistema de Apple (valores públicos del HIG, en claro y oscuro); la marca sustituye `--color-accent` y lo que el proyecto ya tenga.
@@ -81,8 +85,8 @@ skills/tailwind-apple-ui/
 ### `SKILL.md` (flujo)
 
 **Paso 0. Contexto.** Localizar `package.json` (raíz y subcarpetas de monorepo, sin `node_modules`). Leer versión de `tailwindcss` e integración (`@tailwindcss/vite`, `@tailwindcss/postcss`, CLI). Encontrar el CSS de entrada (`@import "tailwindcss"`). Casos:
-- v4 con `@theme` propio → **mandan sus anclas**; solo se añaden las que falten (p. ej. materiales de cristal), con permiso.
-- v4 sin anclas → proponer la plantilla adaptada (acento de marca) y escribirla tras confirmación.
+- v4 con `@theme` propio (Apple o ajeno) → **mandan sus anclas**; solo se añaden las que falten (p. ej. materiales de cristal), con permiso; sin anular la paleta por defecto ni renombrar.
+- v4 sin anclas → proponer la plantilla adaptada (acento de marca), con la paleta y sombras por defecto anuladas, y escribirla tras confirmación.
 - v3 → avisar, ofrecer `npx @tailwindcss/upgrade`, no mezclar.
 - Sin Tailwind / sin proyecto → modo diseño: producir las anclas y decisiones como documento, sin instalar nada.
 
@@ -130,7 +134,7 @@ Recorre `.html .jsx .tsx .vue .svelte .astro .css` (excluye `node_modules`, `dis
 |---|---|
 | `ARB` | Valor arbitrario de color/medida (`-[#…]`, `-[13px]`, `-[rgb(…)]`) |
 | `V3` | Sintaxis v3: `@tailwind`, `tailwind.config.*`, `bg-[--var]`, `!` delante, renombrados (`shadow-sm` antiguo, `outline-none`, `flex-shrink-*`, `bg-opacity-*`…) |
-| `PALETA` | Colores de paleta cruda (`bg-gray-500`, `text-blue-600`) donde la plantilla define semánticos — solo si el proyecto tiene `@theme` con semánticos |
+| `PALETA` | Colores de paleta cruda (`bg-gray-500`, `text-blue-600`) cuando el proyecto define colores semánticos propios en `@theme` o `:root` (sean los de la plantilla o ajenos). Si la paleta está anulada no hace falta: no compila |
 | `CRISTAL-ANIDADO` | Elemento con `backdrop-blur`/`glass-*` dentro de otro en el mismo fichero (heurística) |
 | `CRISTAL-CONTENIDO` | `backdrop-blur`/`glass-*` en `article`, `li`, `td`, `p`, `img` o clases tipo `card` |
 | `SIN-ALT-TRANSP` | Hay cristal y no hay regla `prefers-reduced-transparency` en el CSS |
@@ -144,6 +148,11 @@ Salida agrupada por código con recuento y la ruta del CSS de entrada detectado.
 - `marketplace.json`: entrada `tailwind-apple-ui`, versión 1.4.0.
 - README principal: fila en la tabla, enlace al ZIP, línea en Uso.
 - Workflow de release: sin cambios (empaqueta cualquier carpeta de `skills/`).
+
+## Fuera de la v1
+
+- Refracción real de Liquid Glass con filtros SVG en `backdrop-filter`.
+- Skill genérica de anclas sin criterio Apple.
 
 ## Queda al constructor
 
